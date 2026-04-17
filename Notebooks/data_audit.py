@@ -2,6 +2,43 @@
 Phase 1: Data Audit Script
 Branch: phase-1-data-audit
 Purpose: Audit raw datasets for quality issues before preprocessing
+
+================================================================
+AUDIT FINDINGS SUMMARY (run date: see Git commit)
+================================================================
+
+Dataset sources (World Bank Open Data):
+    - Life_expectancy.csv      : Life expectancy at birth, total (years)
+    - metadata_countries.csv   : Country classifications (Region, IncomeGroup)
+
+DATASET DIMENSIONS
+    Life expectancy : 266 rows x 70 columns (years 1960 - 2025)
+    Metadata        : 265 rows x 5 columns
+
+NULL VALUES
+    Life expectancy total nulls : 365
+    Worst year for nulls        : 2025 (266 nulls - column is empty)
+    Nulls in 2013-2023 window   : 11 (acceptable for analysis)
+    Metadata Region nulls       : 48
+    Metadata IncomeGroup nulls  : 50
+
+FORMATTING / STRUCTURAL ISSUES
+    - Dataset is in WIDE format (year-per-column) -> melt required
+    - Year columns are stored as strings -> cast to int in Phase 2
+    - 49 rows remain unmatched after merge (aggregate entities
+      such as "World", "OECD members", "European Union") - these
+      lack sovereign country metadata by design.
+
+DECISIONS CARRIED INTO PHASE 2 (preprocessing)
+    1. Filter dataset to a 10-year window (2013-2023) to minimise
+       nulls and keep analysis focused on modern trends.
+    2. Drop the 2025 column (entirely empty) and 2024 (sparse).
+    3. Drop rows with no Region (aggregate entities) to ensure
+       geographic visualisations remain meaningful.
+    4. Melt wide -> long format (Year, Life Expectancy).
+    5. Impute missing IncomeGroup where possible; drop otherwise.
+
+================================================================
 """
 
 import pandas as pd
@@ -17,7 +54,6 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 df_life = pd.read_csv(RAW_DIR / "Life_expectancy.csv", skiprows=3)
 df_meta = pd.read_csv(RAW_DIR / "metadata_countries.csv")
 
-# Strip any hidden whitespace in column names
 df_life.columns = df_life.columns.str.strip()
 df_meta.columns = df_meta.columns.str.strip()
 
@@ -62,8 +98,8 @@ print(f"\n[4] Exported: {OUT_DIR / 'audit_raw_merge.csv'}")
 
 print("\n" + "=" * 60)
 print("AUDIT COMPLETE - Issues identified for Phase 2:")
-print("  - Countries missing Region (aggregate/non-sovereign entries)")
-print("  - Countries missing IncomeGroup (same cause)")
+print("  - 49 unmatched country codes (aggregate/non-sovereign entries)")
+print("  - 50 metadata rows missing IncomeGroup")
 print("  - Year 2024/2025 columns largely empty - filter to 2013-2023")
 print("  - Dataset is in WIDE format - melt required for visualisation")
 print("=" * 60)
