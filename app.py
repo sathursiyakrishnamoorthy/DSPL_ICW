@@ -17,6 +17,74 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+# Visual polish — keep light, restrained, professional
+_CUSTOM_CSS = """
+<style>
+    /* Clean top & generous padding */
+    header[data-testid="stHeader"] { background: transparent; }
+    .block-container { padding-top: 2.5rem; padding-bottom: 2.5rem; max-width: 1400px; }
+
+    /* KPI cards — white with teal top accent */
+    div[data-testid="stMetric"] {
+        background: #FFFFFF;
+        border: 1px solid #E4E9EF;
+        border-top: 3px solid #00847A;
+        border-radius: 8px;
+        padding: 18px 22px;
+        box-shadow: 0 2px 6px rgba(26,43,60,0.04);
+    }
+    div[data-testid="stMetricLabel"] {
+        color: #5A6B7D !important;
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+    div[data-testid="stMetricValue"] {
+        color: #1A2B3C !important;
+        font-size: 1.85rem !important;
+        font-weight: 700 !important;
+    }
+    div[data-testid="stMetricDelta"] { font-size: 0.85rem !important; }
+
+    /* Tabs — cleaner underline */
+    button[data-baseweb="tab"] {
+        font-size: 1rem;
+        font-weight: 500;
+        color: #5A6B7D;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #00847A !important;
+        border-bottom: 3px solid #00847A !important;
+    }
+
+    /* Headings — tighter spacing, better hierarchy */
+    h1 {
+        color: #1A2B3C;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        padding-bottom: 0.2rem;
+    }
+    h2, h3, h4 { color: #1A2B3C; font-weight: 600; }
+
+    /* Sidebar — subtle blue tint, crisp separator */
+    section[data-testid="stSidebar"] {
+        background-color: #EAF4F7;
+        border-right: 1px solid #D5E6EC;
+    }
+    section[data-testid="stSidebar"] h2 {
+        color: #00847A;
+        font-size: 1.1rem;
+        letter-spacing: 0.3px;
+    }
+
+    /* Dataframe — softer corners */
+    .stDataFrame { border-radius: 8px; overflow: hidden; border: 1px solid #E4E9EF; }
+
+    /* Divider — softer */
+    hr { border-color: #E4E9EF !important; margin: 1.2rem 0; }
+</style>
+"""
 
 # Configuration
 
@@ -105,6 +173,15 @@ def log_correlation(data):
     return float(np.corrcoef(log_gdp, data["Life Expectancy"])[0, 1])
 
 
+def footnote(text):
+    """Render a small italic footnote-style caption below a chart."""
+    st.markdown(
+        f"<p style='color:#5A6B7D; font-size:0.85rem; font-style:italic; "
+        f"margin-top:-8px; padding-left:4px;'>{text}</p>",
+        unsafe_allow_html=True,
+    )
+
+
 # Page setup
 
 st.set_page_config(
@@ -113,6 +190,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+st.markdown(_CUSTOM_CSS, unsafe_allow_html=True)
 
 df = load_data()
 
@@ -267,6 +346,12 @@ with trends_tab:
         fig.update_traces(line_width=2.5)
         st.plotly_chart(fig, use_container_width=True)
 
+    footnote(
+        "Regions and income groups have converged slightly over the decade, "
+        "but the spread between the highest and lowest remains above 15 years. "
+        "High-income economies continue to lead on both dimensions."
+    )
+
     # Key figures row
     top_region, top_gain = largest_regional_gain(filtered)
     high_income_avg = (
@@ -342,9 +427,11 @@ with relationship_tab:
         f"{scatter_data['Life Expectancy'].min():.1f} yrs",
     )
 
-    st.caption(
-        "Pearson correlation computed on log-transformed GDP. Trendline shown is "
-        "ordinary least squares (OLS) across all visible countries."
+    footnote(
+        f"Strong positive correlation (r = {correlation:.2f} on log-GDP). "
+        "The logarithmic x-axis reveals the diminishing returns of wealth on "
+        "longevity: gains flatten sharply above roughly $40,000 per capita. "
+        "Trendline shown is ordinary least squares (OLS)."
     )
 
 
@@ -382,6 +469,13 @@ with timeline_tab:
                       transition={"duration": 300, "easing": "cubic-in-out"})
     st.plotly_chart(fig, use_container_width=True)
 
+    footnote(
+        "Most economies trend up and to the right over the decade. The 2020 "
+        "dip is visible across nearly all regions, reflecting the pandemic's "
+        "impact on life expectancy. Notable catch-up trajectories include China "
+        "and India; notable setbacks include several Latin American economies in 2020."
+    )
+
 
 # Tab 4: Global map (FR-09)
 
@@ -417,6 +511,12 @@ with map_tab:
     )
     fig.update_layout(**{**CHART_LAYOUT, "margin": dict(l=0, r=0, t=30, b=0)}, height=560)
     st.plotly_chart(fig, use_container_width=True)
+
+    footnote(
+        "Geographic clustering is evident. Sub-Saharan Africa consistently ranks "
+        "lowest; Europe, North America, East Asia, and Oceania form the upper band. "
+        "Hover over any country for precise figures."
+    )
 
 
 # Tab 5: Country comparison
@@ -470,6 +570,11 @@ with compare_tab:
             .reset_index(drop=True)
         )
         st.dataframe(summary, use_container_width=True, hide_index=True)
+
+        footnote(
+            "Direct comparison reveals trajectory differences obscured by regional "
+            "averaging. Use this view to examine specific economies of interest."
+        )
 
 
 # Filtered data expander (FR-11)
